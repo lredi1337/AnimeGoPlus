@@ -39,3 +39,6 @@
 \*Разработано для фанатов аниме. Приятного просмотра!\*
 
 
+<img width="1920" height="1080" alt="2026-02-24_14-35-36" src="https://github.com/user-attachments/assets/38e127f0-03a6-433f-8450-a1c50d208d3a" />
+
+<img width="1920" height="1080" alt="2026-02-24_14-33-37" src="https://github.com/user-attachments/assets/7f1b4b31-6e4c-4b22-aa2f-43c9704f5632" />
