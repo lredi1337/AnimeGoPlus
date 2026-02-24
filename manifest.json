@@ -3,7 +3,12 @@
   "name": "AnimeGO+",
   "version": "5.0",
   "description": "Улучшенный плеер с авто-пропуском опенингов и марафоном",
-  "permissions": ["storage", "activeTab", "webNavigation"],
+  "permissions": [
+    "storage", 
+    "activeTab", 
+    "webNavigation",
+    "scripting"
+  ],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -42,7 +47,8 @@
         "https://*.tube-storage.com/*"
       ],
       "js": ["content.js"],
-      "run_at": "document_end"
+      "run_at": "document_end",
+      "all_frames": true
     }
   ]
 }
