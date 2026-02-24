@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "AnimeGO+",
+  "version": "5.0",
+  "description": "Улучшенный плеер с авто-пропуском опенингов и марафоном",
+  "permissions": ["storage", "activeTab", "webNavigation"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "host_permissions": [
+    "https://animego.me/*",
+    "https://animego.org/*",
+    "https://*.kodik.info/*",
+    "https://*.dbcode.info/*",
+    "https://*.kodik-storage.com/*",
+    "https://*.cloud.kodik-storage.com/*",
+    "https://*.tube-storage.com/*",
+    "https://api.aniskip.com/*",
+    "https://shikimori.one/api/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://animego.me/*",
+        "https://animego.org/*",
+        "https://*.kodik.info/*",
+        "https://*.dbcode.info/*",
+        "https://*.kodik-storage.com/*",
+        "https://*.cloud.kodik-storage.com/*",
+        "https://*.tube-storage.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
