@@ -11,11 +11,11 @@
         showNav: true, showSkipBtn: true, showCenterBtn: true, showDBL: true,
         hideTime: 2000, extId: chrome.runtime.id,
         keys: {
-            play: "space",
             fs: "f",
             mute: "m",
-            next: "n",
             skip: "s",
+            next: "n",
+            prev: "b",       // Предыдущая серия
             rewind: "arrowleft",
             forward: "arrowright"
         }
@@ -53,7 +53,6 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.repeat) return; 
-            
             const pressed = [];
             if (e.ctrlKey) pressed.push('ctrl');
             if (e.altKey) pressed.push('alt');
@@ -62,18 +61,13 @@
                 pressed.push(e.key.toLowerCase());
             }
             const combo = pressed.join('+');
-
             const v = document.querySelector('video');
             if (!v) return;
 
-            if (combo === settings.keys.play) {
-                e.preventDefault(); e.stopPropagation();
-                v.paused ? v.play() : v.pause();
-                showFlash(v.paused ? '❚❚' : '▶');
-            }
-            else if (combo === settings.keys.fs) {
+            if (combo === settings.keys.fs) {
                 e.preventDefault(); e.stopPropagation();
                 window.parent.postMessage({type: 'AG_PSEUDO_FS', action: 'toggle'}, '*');
+                showFlash("📺");
             }
             else if (combo === settings.keys.mute) {
                 e.preventDefault(); e.stopPropagation();
@@ -91,16 +85,17 @@
             else if (combo === settings.keys.next) {
                 e.preventDefault(); e.stopPropagation();
                 window.parent.postMessage({type:'AG_NAV', dir:'next'}, '*');
+                showFlash("▶▶");
+            }
+            else if (combo === settings.keys.prev) {
+                e.preventDefault(); e.stopPropagation();
+                window.parent.postMessage({type:'AG_NAV', dir:'prev'}, '*');
+                showFlash("◀◀");
             }
             else if (combo === settings.keys.skip) {
                 e.preventDefault(); e.stopPropagation();
-                if (currentSkipTarget) {
-                    v.currentTime = currentSkipTarget;
-                    showFlash("Skipped!");
-                } else {
-                    v.currentTime += 85; 
-                    showFlash("Skip +85s");
-                }
+                if (currentSkipTarget) { v.currentTime = currentSkipTarget; showFlash("⏩"); } 
+                else { v.currentTime += 85; showFlash("+85с"); }
             }
             else if (e.key === 'Escape') {
                 window.parent.postMessage({type: 'AG_PSEUDO_FS', action: 'disable'}, '*');
@@ -563,18 +558,20 @@
                 ${renderRow('showNav', 'Стрелки серий', 'Кнопки < и > по бокам.')}
                 ${renderRow('showSkipBtn', 'Кнопка +90с', 'Кнопка пропуска опенинга.')}
                 ${renderRow('showCenterBtn', 'Кнопки перемотки', 'Дополнительные кнопки -5с / +5с в центре.')}
-                ${renderRow('showDBL', 'Двойной клик', 'Перемотка по краям и фуллскрин в центре по 2-му клику.')}
+                ${renderRow('showDBL', 'Двойной клик', 'Перемотка и FS по краям.')}
                 
                 <div class="ag-set-group">Тайминги</div>
                 <div class="ag-set-row"><span>Меню исчезает через: <span id="v-ht">${settings.hideTime/1000}</span>с</span></div>
                 <input type="range" id="s-hideTime" min="500" max="5000" step="500" value="${settings.hideTime}" style="width:100%; accent-color:${AG_RED}">
 
                 <div class="ag-set-group">Управление / Hotkeys</div>
-                ${renderKeyRow('play', 'Плей / Пауза')}
                 ${renderKeyRow('fs', 'На весь экран')}
                 ${renderKeyRow('mute', 'Мут звука')}
-                ${renderKeyRow('skip', 'Пропустить (Skip)')}
+                ${renderKeyRow('skip', 'Пропустить опенинг')}
                 ${renderKeyRow('next', 'След. серия')}
+                ${renderKeyRow('prev', 'Пред. серия')}
+                <div class="ag-set-row"><span>Перемотка назад</span><button class="ag-key-btn" data-action="rewind">${settings.keys.rewind}</button></div>
+                <div class="ag-set-row"><span>Перемотка вперед</span><button class="ag-key-btn" data-action="forward">${settings.keys.forward}</button></div>
                 
                 <div class="ag-footer-btns">
                     <button id="ag-reset" class="ag-btn-main">Сброс</button>
@@ -584,25 +581,19 @@
             overlay.style.display = modal.style.display = 'block';
             document.getElementById('s-hideTime').oninput = (e) => document.getElementById('v-ht').textContent = e.target.value/1000;
             
+            // Назначение клавиш
             modal.querySelectorAll('.ag-key-btn').forEach(btn => {
                 btn.onclick = () => {
                     const action = btn.dataset.action;
                     btn.innerText = "Жду...";
                     btn.classList.add('listening');
-                    
                     const listener = (e) => {
                         e.preventDefault(); e.stopPropagation();
                         if (['control', 'alt', 'shift', 'meta'].includes(e.key.toLowerCase())) return;
-
-                        const pressed = [];
-                        if (e.ctrlKey) pressed.push('ctrl');
-                        if (e.altKey) pressed.push('alt');
-                        if (e.shiftKey) pressed.push('shift');
-                        pressed.push(e.key.toLowerCase());
-                        
-                        const combo = pressed.join('+');
-                        settings.keys[action] = combo; 
-                        
+                        const p = []; if (e.ctrlKey) p.push('ctrl'); if (e.altKey) p.push('alt'); if (e.shiftKey) p.push('shift');
+                        p.push(e.key.toLowerCase());
+                        const combo = p.join('+');
+                        settings.keys[action] = combo;
                         btn.innerText = combo;
                         btn.classList.remove('listening');
                         document.removeEventListener('keydown', listener, true);
@@ -611,16 +602,16 @@
                 };
             });
             
+            // Логика кнопки Сохранить (Бесшовная)
             document.getElementById('ag-save').onclick = () => {
                 const newS = { 
                     hideTime: parseInt(document.getElementById('s-hideTime').value),
                     keys: settings.keys 
                 };
                 ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => newS[k] = document.getElementById(`s-${k}`).checked);
-
+                
                 chrome.storage.local.set({ag_settings: newS});
                 settings = newS;
-
                 const iframe = document.querySelector('iframe');
                 if (iframe?.contentWindow) {
                     iframe.contentWindow.postMessage({ type: 'AG_SETTINGS_UPDATE', settings: newS }, '*');
@@ -628,6 +619,7 @@
                 overlay.style.display = modal.style.display = 'none';
             };
 
+            // Логика кнопки Сброс (Бесшовная, как ты прислал)
             document.getElementById('ag-reset').onclick = () => { 
                 chrome.storage.local.set({ag_settings: DEFAULT_SETTINGS});
                 settings = DEFAULT_SETTINGS;
