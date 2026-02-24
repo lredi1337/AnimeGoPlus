@@ -12,10 +12,9 @@
         hideTime: 2000, extId: chrome.runtime.id,
         keys: {
             fs: "f",
-            mute: "m",
-            skip: "s",
             next: "n",
-            prev: "b",       // Предыдущая серия
+            prev: "p",
+            skip: "s",
             rewind: "arrowleft",
             forward: "arrowright"
         }
@@ -30,6 +29,14 @@
     }
 
     let settings = await getSettings();
+
+    // Helper to validate message origin for security
+    function isValidOrigin(origin) {
+        return origin.includes('animego.org') || 
+               origin.includes('animego.me') || 
+               origin.includes('kodik.info') || 
+               origin.includes('dbcode.info');
+    }
 
     if (isKodik) {
         // ==========================================
@@ -53,6 +60,7 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.repeat) return; 
+            
             const pressed = [];
             if (e.ctrlKey) pressed.push('ctrl');
             if (e.altKey) pressed.push('alt');
@@ -61,18 +69,13 @@
                 pressed.push(e.key.toLowerCase());
             }
             const combo = pressed.join('+');
+
             const v = document.querySelector('video');
             if (!v) return;
 
             if (combo === settings.keys.fs) {
                 e.preventDefault(); e.stopPropagation();
                 window.parent.postMessage({type: 'AG_PSEUDO_FS', action: 'toggle'}, '*');
-                showFlash("📺");
-            }
-            else if (combo === settings.keys.mute) {
-                e.preventDefault(); e.stopPropagation();
-                v.muted = !v.muted;
-                showFlash(v.muted ? '🔇' : '🔊');
             }
             else if (combo === settings.keys.forward) {
                 e.preventDefault(); e.stopPropagation();
@@ -85,17 +88,20 @@
             else if (combo === settings.keys.next) {
                 e.preventDefault(); e.stopPropagation();
                 window.parent.postMessage({type:'AG_NAV', dir:'next'}, '*');
-                showFlash("▶▶");
             }
             else if (combo === settings.keys.prev) {
                 e.preventDefault(); e.stopPropagation();
                 window.parent.postMessage({type:'AG_NAV', dir:'prev'}, '*');
-                showFlash("◀◀");
             }
             else if (combo === settings.keys.skip) {
                 e.preventDefault(); e.stopPropagation();
-                if (currentSkipTarget) { v.currentTime = currentSkipTarget; showFlash("⏩"); } 
-                else { v.currentTime += 85; showFlash("+85с"); }
+                if (currentSkipTarget) {
+                    v.currentTime = currentSkipTarget;
+                    showFlash("Skipped!");
+                } else {
+                    v.currentTime += 85; 
+                    showFlash("Skip +85s");
+                }
             }
             else if (e.key === 'Escape') {
                 window.parent.postMessage({type: 'AG_PSEUDO_FS', action: 'disable'}, '*');
@@ -103,6 +109,8 @@
         });
 
         window.addEventListener('message', (e) => {
+            if (!isValidOrigin(e.origin)) return; // Security check
+
             if (e.data?.type === 'AG_MARATHON_CONFIRM') {
                 canAutoPlay = true; 
                 if (!settings.autoPlay) return;
@@ -164,6 +172,7 @@
             if (!timeline) return;
 
             let tooltip = document.getElementById('ag-timeline-tooltip');
+            let tooltipText = document.getElementById('ag-timeline-tooltip-text');
             if (!tooltip) {
                 tooltip = document.createElement('div');
                 tooltip.id = 'ag-timeline-tooltip';
@@ -174,6 +183,10 @@
                     font-family: sans-serif; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
                     font-weight: 500;
                 `;
+                tooltipText = document.createElement('span');
+                tooltipText.id = 'ag-timeline-tooltip-text';
+                tooltip.appendChild(tooltipText);
+                
                 const arrow = document.createElement('div');
                 arrow.style = `
                     position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
@@ -191,7 +204,7 @@
                 container.style = "position:absolute; inset:0; pointer-events:none; z-index:0;";
                 timeline.appendChild(container);
             } else {
-                container.innerHTML = '';
+                container.replaceChildren();
             }
 
             const formatTime = (s) => {
@@ -219,9 +232,8 @@
                     const rect = timeline.getBoundingClientRect();
                     const percent = (e.clientX - rect.left) / rect.width;
                     const currentTime = v.duration * percent;
-                    tooltip.innerHTML = `${formatTime(currentTime)}: ${label}`;
-                    const arrow = tooltip.querySelector('div');
-                    if(arrow) tooltip.appendChild(arrow); 
+                    const textSpan = document.getElementById('ag-timeline-tooltip-text');
+                    if (textSpan) textSpan.textContent = `${formatTime(currentTime)}: ${label}`;
                     tooltip.style.left = e.clientX + 'px';
                     tooltip.style.top = (rect.top + window.scrollY) + 'px';
                 };
@@ -248,14 +260,17 @@
             btn.onmouseout = () => { btn.style.background = "rgba(0,0,0,0.7)"; btn.style.borderColor = "rgba(255,255,255,0.35)"; };
             document.body.appendChild(btn);
 
+            let lastTimeUpdate = 0;
             v.addEventListener('timeupdate', () => {
+                const now = Date.now();
+                if (now - lastTimeUpdate < 500) return; // Оптимизация: запускаем логику не чаще 2 раз в секунду
+                lastTimeUpdate = now;
+                
                 const cur = v.currentTime;
                 
+                // Оптимизация: offsetParent работает быстрее, чем getComputedStyle
                 const nativeSkip = Array.from(document.querySelectorAll('[class*="skip"]'))
-                    .find(el => {
-                        const style = window.getComputedStyle(el);
-                        return style.display !== 'none' && style.visibility !== 'hidden' && el.innerText.trim().length > 0;
-                    });
+                    .find(el => el.offsetParent !== null && el.innerText.trim().length > 0);
                 
                 if (nativeSkip) { 
                     btn.style.display = "none"; 
@@ -321,7 +336,9 @@
             `;
             document.head.appendChild(style);
             const ui = document.createElement('div'); ui.id = 'ag-ui';
-            ui.innerHTML = `<div class="ag-btn ag-nav" style="left:0" id="ag-p"><span>&lt;</span><div id="ag-pn" class="ag-num"></div></div><div class="ag-btn ag-nav" style="right:0" id="ag-n"><span>&gt;</span><div id="ag-nn" class="ag-num"></div></div><div class="ag-btn" id="ag-skip"><span>»</span></div><div class="ag-btn ag-center-btn" id="ag-c1">«5</div><div class="ag-btn ag-center-btn" id="ag-c2">5»</div><div id="ag-flash"></div><div class="ag-click-zone" style="left:0; width:20%;" id="z-p"></div><div class="ag-click-zone" style="right:0; width:20%;" id="z-n"></div><div class="ag-click-zone" style="left:20%; width:60%;" id="z-m"></div><div id="ag-fs-patch"></div><div id="ag-tooltip">Better UI: Расширить плеер</div>`;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(`<div class="ag-btn ag-nav" style="left:0" id="ag-p"><span>&lt;</span><div id="ag-pn" class="ag-num"></div></div><div class="ag-btn ag-nav" style="right:0" id="ag-n"><span>&gt;</span><div id="ag-nn" class="ag-num"></div></div><div class="ag-btn" id="ag-skip"><span>»</span></div><div class="ag-btn ag-center-btn" id="ag-c1">«5</div><div class="ag-btn ag-center-btn" id="ag-c2">5»</div><div id="ag-flash"></div><div class="ag-click-zone" style="left:0; width:20%;" id="z-p"></div><div class="ag-click-zone" style="right:0; width:20%;" id="z-n"></div><div class="ag-click-zone" style="left:20%; width:60%;" id="z-m"></div><div id="ag-fs-patch"></div><div id="ag-tooltip">Better UI: Расширить плеер</div>`, 'text/html');
+            ui.replaceChildren(...doc.body.childNodes);
             document.body.appendChild(ui);
             
             applyVisualSettings();
@@ -335,11 +352,18 @@
             document.getElementById('z-p').onclick = (e) => handleZone(e, 'prev', v);
             document.getElementById('z-n').onclick = (e) => handleZone(e, 'next', v);
             document.getElementById('z-m').onclick = (e) => handleZone(e, 'mid', v);
+            
+            // Throttled mousemove
+            let moveTimer;
             window.addEventListener('mousemove', () => {
-                ui.style.opacity='1'; clearTimeout(hideTimeout);
-                hideTimeout=setTimeout(()=>ui.style.opacity='0', settings.hideTime);
+                if (moveTimer) return;
+                moveTimer = setTimeout(() => { moveTimer = null; }, 150);
+                if (ui.style.opacity !== '1') ui.style.opacity = '1'; 
+                clearTimeout(hideTimeout);
+                hideTimeout = setTimeout(() => ui.style.opacity = '0', settings.hideTime);
             });
             window.addEventListener('message', (e) => {
+                if (!isValidOrigin(e.origin)) return;
                 if (e.data?.type === 'AG_DATA') {
                     const getN = (s) => s ? s.match(/\d+/)?.[0] : "";
                     if (document.getElementById('ag-pn')) document.getElementById('ag-pn').textContent = getN(e.data.prevTitle);
@@ -349,7 +373,8 @@
             setInterval(() => window.parent.postMessage({type:'AG_GET_DATA'}, '*'), 2000);
         }
 
-        setInterval(() => {
+        // Оптимизация: используем MutationObserver вместо setInterval
+        const iframeObserver = new MutationObserver(() => {
             const v = document.querySelector('video');
             if (v && !v.dataset.agInit) { 
                 v.dataset.agInit = '1'; drawUI(v); 
@@ -373,7 +398,8 @@
                     }
                 }); 
             }
-        }, 800);
+        });
+        iframeObserver.observe(document.body, { childList: true, subtree: true });
 
     } else {
         // ==========================================
@@ -386,6 +412,7 @@
             .ag-pseudo-fs-active iframe { width:100%!important; height:100%!important; position:absolute!important; inset:0!important; border:none!important; }
             .ag-pseudo-fs-active .player-video-bar, .ag-pseudo-fs-active .player-video__side { display:none!important; }
             body.ag-no-scroll { overflow:hidden!important; }
+            body.ag-modal-open { overflow:hidden!important; }
             #ag-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999999; display:none; backdrop-filter:blur(4px); }
             #ag-settings-modal { position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#1a1a1a; color:#fff; padding:24px; border-radius:24px; z-index:10000001; display:none; width:440px; font-family:${AG_FONT}; border:1px solid #333; box-shadow:0 20px 60px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto; }
             .ag-set-group { color:${AG_RED}; font-size:11px; text-transform:uppercase; letter-spacing:1px; margin-top:24px; border-bottom:1px solid #333; padding-bottom:5px; opacity:0.8; }
@@ -435,6 +462,29 @@
                 try {
                     const shiki = await fetch(`https://shikimori.one/api/animes?search=${encodeURIComponent(rawTitle)}&limit=1`).then(r => r.json());
                     if (shiki.length > 0) {
+                        // Добавляем кнопки Shikimori и MAL
+                        const ratingContainer = document.querySelector('.entity__rating');
+                        if (ratingContainer && !document.getElementById('ag-shiki-btn')) {
+                            const shikiUrl = `https://shikimori.one${shiki[0].url}`;
+                            const malUrl = `https://myanimelist.net/anime/${shiki[0].id}`;
+                            
+                            const createBtn = (id, text, url, bgColor) => {
+                                const btn = document.createElement('a');
+                                btn.id = id;
+                                btn.href = url;
+                                btn.target = '_blank';
+                                btn.className = 'btn d-inline-flex align-items-center';
+                                btn.style.cssText = `background-color: ${bgColor}; color: white; font-weight: 600; border-radius: 4px; padding: 0 12px; font-size: 13px; height: 32px; text-decoration: none; margin-top: auto; margin-bottom: auto; border: none; transition: opacity 0.2s;`;
+                                btn.onmouseover = () => btn.style.opacity = '0.8';
+                                btn.onmouseout = () => btn.style.opacity = '1';
+                                btn.innerText = text;
+                                return btn;
+                            };
+
+                            ratingContainer.appendChild(createBtn('ag-shiki-btn', 'Shikimori', shikiUrl, '#212121'));
+                            ratingContainer.appendChild(createBtn('ag-mal-btn', 'MyAnimeList', malUrl, '#2e51a2'));
+                        }
+
                         const res = await fetch(`https://api.aniskip.com/v2/skip-times/${shiki[0].id}/${parseFloat(currentEp)}?types=op&types=ed&episodeLength=0`).then(r => r.json());
                         const data = { op: { start: 0, end: 0 }, ed: { start: 0, end: 0 } };
                         if (res.found) {
@@ -491,7 +541,16 @@
                 const activateMarathon = () => {
                     const currentId = getAnimeId();
                     if (currentId) sessionStorage.setItem('ag_active_marathon_id', currentId);
-                    if (settings.autoFS) setTimeout(() => setPseudoFS('enable'), 300);
+                    if (settings.autoFS) {
+                        setTimeout(() => {
+                            setPseudoFS('enable');
+                            // Ensure iframe knows about the full-screen state
+                            const container = document.querySelector('.player__video');
+                            if (container) {
+                                container.querySelector('iframe')?.contentWindow.postMessage({type: 'AG_FS_STATE', active: true}, '*');
+                            }
+                        }, 300);
+                    }
                 };
 
                 btn.addEventListener('mousedown', activateMarathon);
@@ -500,6 +559,8 @@
         };
 
         window.addEventListener('message', (e) => {
+            if (!isValidOrigin(e.origin)) return;
+
             if (e.data?.type === 'AG_PLAYER_READY' || e.data?.type === 'AG_GET_DATA') {
                 if (checkMarathon()) e.source.postMessage({ type: 'AG_MARATHON_CONFIRM' }, '*');
                 const sel = document.querySelector("select[name='series']");
@@ -515,6 +576,15 @@
             if (e.data?.type === 'AG_START_MARATHON') {
                 const currentId = getAnimeId();
                 if (currentId) sessionStorage.setItem('ag_active_marathon_id', currentId);
+                if (settings.autoFS) {
+                    setTimeout(() => {
+                        setPseudoFS('enable');
+                        const container = document.querySelector('.player__video');
+                        if (container) {
+                            container.querySelector('iframe')?.contentWindow.postMessage({type: 'AG_FS_STATE', active: true}, '*');
+                        }
+                    }, 300);
+                }
             }
             if (e.data?.type === 'AG_PSEUDO_FS') setPseudoFS(e.data.action);
             
@@ -539,10 +609,12 @@
         document.body.append(overlay, modal);
 
         const renderRow = (id, title, desc) => `<div class="ag-set-row"><span>${title}</span><label class="ag-switch"><input type="checkbox" id="s-${id}" ${settings[id]?'checked':''}> <span class="ag-slider"></span></label></div><div class="ag-set-desc">${desc}</div>`;
-        const renderKeyRow = (action, title) => `<div class="ag-set-row"><span>${title}</span><button class="ag-key-btn" data-action="${action}">${settings.keys[action]}</button></div>`;
+        const renderKeyRow = (action, title, desc) => `<div class="ag-set-row"><span>${title}</span><button class="ag-key-btn" data-action="${action}">${settings.keys[action]}</button></div><div class="ag-set-desc">${desc}</div>`;
+
+        let activeKeyListener = null;
 
         const openSettings = () => {
-            modal.innerHTML = `
+            const html = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h4 style="color:${AG_RED}; margin:0; font-size:18px;">Better UI ⚙️</h4>
                     <span style="color: #555; font-size: 11px; font-family: ${AG_FONT};">by l_red_i</span>
@@ -558,68 +630,82 @@
                 ${renderRow('showNav', 'Стрелки серий', 'Кнопки < и > по бокам.')}
                 ${renderRow('showSkipBtn', 'Кнопка +90с', 'Кнопка пропуска опенинга.')}
                 ${renderRow('showCenterBtn', 'Кнопки перемотки', 'Дополнительные кнопки -5с / +5с в центре.')}
-                ${renderRow('showDBL', 'Двойной клик', 'Перемотка и FS по краям.')}
+                ${renderRow('showDBL', 'Двойной клик', 'Перемотка по краям и фуллскрин в центре по 2-му клику.')}
                 
                 <div class="ag-set-group">Тайминги</div>
                 <div class="ag-set-row"><span>Меню исчезает через: <span id="v-ht">${settings.hideTime/1000}</span>с</span></div>
                 <input type="range" id="s-hideTime" min="500" max="5000" step="500" value="${settings.hideTime}" style="width:100%; accent-color:${AG_RED}">
 
                 <div class="ag-set-group">Управление / Hotkeys</div>
-                ${renderKeyRow('fs', 'На весь экран')}
-                ${renderKeyRow('mute', 'Мут звука')}
-                ${renderKeyRow('skip', 'Пропустить опенинг')}
-                ${renderKeyRow('next', 'След. серия')}
-                ${renderKeyRow('prev', 'Пред. серия')}
-                <div class="ag-set-row"><span>Перемотка назад</span><button class="ag-key-btn" data-action="rewind">${settings.keys.rewind}</button></div>
-                <div class="ag-set-row"><span>Перемотка вперед</span><button class="ag-key-btn" data-action="forward">${settings.keys.forward}</button></div>
+                ${renderKeyRow('fs', 'На весь экран', 'Разворачивает плеер в кастомный полноэкранный режим.')}
+                ${renderKeyRow('skip', 'Пропустить (Skip)', 'Пропускает опенинг/эндинг или перематывает на 85 секунд вперед.')}
+                ${renderKeyRow('next', 'След. серия', 'Переключает на следующую серию.')}
+                ${renderKeyRow('prev', 'Пред. серия', 'Переключает на предыдущую серию.')}
+                ${renderKeyRow('forward', 'Вперед на 5с', 'Перематывает видео на 5 секунд вперед.')}
+                ${renderKeyRow('rewind', 'Назад на 5с', 'Перематывает видео на 5 секунд назад.')}
                 
                 <div class="ag-footer-btns">
                     <button id="ag-reset" class="ag-btn-main">Сброс</button>
                     <button id="ag-save" class="ag-btn-main">Сохранить</button>
                 </div>`;
                 
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            modal.replaceChildren(...doc.body.childNodes);
+                
             overlay.style.display = modal.style.display = 'block';
+            document.body.classList.add('ag-modal-open');
             document.getElementById('s-hideTime').oninput = (e) => document.getElementById('v-ht').textContent = e.target.value/1000;
             
-            // Назначение клавиш
             modal.querySelectorAll('.ag-key-btn').forEach(btn => {
                 btn.onclick = () => {
                     const action = btn.dataset.action;
                     btn.innerText = "Жду...";
                     btn.classList.add('listening');
-                    const listener = (e) => {
+                    
+                    if (activeKeyListener) {
+                        document.removeEventListener('keydown', activeKeyListener, true);
+                    }
+
+                    activeKeyListener = (e) => {
                         e.preventDefault(); e.stopPropagation();
                         if (['control', 'alt', 'shift', 'meta'].includes(e.key.toLowerCase())) return;
-                        const p = []; if (e.ctrlKey) p.push('ctrl'); if (e.altKey) p.push('alt'); if (e.shiftKey) p.push('shift');
-                        p.push(e.key.toLowerCase());
-                        const combo = p.join('+');
-                        settings.keys[action] = combo;
+
+                        const pressed = [];
+                        if (e.ctrlKey) pressed.push('ctrl');
+                        if (e.altKey) pressed.push('alt');
+                        if (e.shiftKey) pressed.push('shift');
+                        pressed.push(e.key.toLowerCase());
+                        
+                        const combo = pressed.join('+');
+                        settings.keys[action] = combo; 
+                        
                         btn.innerText = combo;
                         btn.classList.remove('listening');
-                        document.removeEventListener('keydown', listener, true);
+                        document.removeEventListener('keydown', activeKeyListener, true);
+                        activeKeyListener = null;
                     };
-                    document.addEventListener('keydown', listener, true);
+                    document.addEventListener('keydown', activeKeyListener, true);
                 };
             });
             
-            // Логика кнопки Сохранить (Бесшовная)
             document.getElementById('ag-save').onclick = () => {
                 const newS = { 
                     hideTime: parseInt(document.getElementById('s-hideTime').value),
                     keys: settings.keys 
                 };
                 ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => newS[k] = document.getElementById(`s-${k}`).checked);
-                
+
                 chrome.storage.local.set({ag_settings: newS});
                 settings = newS;
+
                 const iframe = document.querySelector('iframe');
                 if (iframe?.contentWindow) {
                     iframe.contentWindow.postMessage({ type: 'AG_SETTINGS_UPDATE', settings: newS }, '*');
                 }
-                overlay.style.display = modal.style.display = 'none';
+                overlay.click(); // Close cleanly
             };
 
-            // Логика кнопки Сброс (Бесшовная, как ты прислал)
             document.getElementById('ag-reset').onclick = () => { 
                 chrome.storage.local.set({ag_settings: DEFAULT_SETTINGS});
                 settings = DEFAULT_SETTINGS;
@@ -627,27 +713,51 @@
                 if (iframe?.contentWindow) {
                     iframe.contentWindow.postMessage({ type: 'AG_SETTINGS_UPDATE', settings: DEFAULT_SETTINGS }, '*');
                 }
-                overlay.style.display = modal.style.display = 'none';
+                overlay.click(); // Close cleanly
             };
         };
 
-        overlay.onclick = () => overlay.style.display = modal.style.display = 'none';
+        overlay.onclick = () => {
+            if (activeKeyListener) {
+                document.removeEventListener('keydown', activeKeyListener, true);
+                activeKeyListener = null;
+            }
+            overlay.style.display = modal.style.display = 'none';
+            document.body.classList.remove('ag-modal-open');
+        }
 
-        setInterval(() => {
+        // Оптимизация: используем MutationObserver вместо setInterval
+        let syncTimeout = null;
+        const mainObserver = new MutationObserver(() => {
             const kodikBtn = document.querySelector('button[data-provider-title*="Kodik"]');
             if (kodikBtn && !kodikBtn.classList.contains('active') && !kodikBtn.dataset.agDone) {
                 kodikBtn.dataset.agDone = '1'; kodikBtn.click();
             }
             handleResume();
-            syncAniSkip();
+            
+            // Debounce syncAniSkip to avoid spamming API during heavy DOM changes
+            if (!syncTimeout) {
+                syncTimeout = setTimeout(() => {
+                    syncAniSkip();
+                    syncTimeout = null;
+                }, 500);
+            }
+
             const tabs = document.getElementById('video-player');
             if (tabs && !document.getElementById('ag-settings-btn')) {
                 const li = document.createElement('li'); li.className='nav-item';
-                li.innerHTML = `<button class="nav-link fs-5" id="ag-settings-btn" type="button" style="color:${AG_RED}">⚙️</button>`;
+                const btn = document.createElement('button');
+                btn.className = 'nav-link fs-5';
+                btn.id = 'ag-settings-btn';
+                btn.type = 'button';
+                btn.style.color = AG_RED;
+                btn.textContent = '⚙️';
+                li.appendChild(btn);
                 tabs.appendChild(li);
                 li.onclick = openSettings;
             }
-        }, 800);
+        });
+        mainObserver.observe(document.body, { childList: true, subtree: true });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setPseudoFS('disable'); overlay.click(); } });
     }
 })();
