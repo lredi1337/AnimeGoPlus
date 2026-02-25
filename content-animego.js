@@ -275,7 +275,7 @@
             <div class="ag-set-group">Марафон и Автоматика</div>
             ${renderRow('autoPlay', 'Авто-плей', 'Автоматически нажимает Play.')}
             ${renderRow('autoNext', 'Авто-переход', 'Переключает серию в конце.')}
-            ${renderRow('autoFS', 'Фуллскрин', 'Авто-разворачивание при старте.')}
+            ${renderRow('autoFS', 'Псевдо-фуллскрин', 'Улучшенный фуллскрин без рамок. Если выключено — используется обычный.')}
             ${renderRow('autoSkip', 'Авто-скип', 'Пропуск опенингов (AniSkip).')}
             
             <div class="ag-set-group">Интерфейс</div>
@@ -297,8 +297,7 @@
             ${renderKeyRow('rewind', 'Назад на 5с', 'Перематывает видео на 5 секунд назад.')}
             
             <div class="ag-footer-btns">
-                <button id="ag-reset" class="ag-btn-main">Сброс</button>
-                <button id="ag-save" class="ag-btn-main">Сохранить</button>
+                <button id="ag-reset" class="ag-btn-main" style="background:#2a2a2a; color:#888;">Выключить всё</button>
             </div>`;
             
         const parser = new DOMParser();
@@ -307,7 +306,30 @@
             
         overlay.style.display = modal.style.display = 'block';
         document.body.classList.add('ag-modal-open');
-        document.getElementById('s-hideTime').oninput = (e) => document.getElementById('v-ht').textContent = e.target.value/1000;
+
+        const saveSettings = () => {
+            const newS = { 
+                hideTime: parseInt(document.getElementById('s-hideTime').value),
+                keys: settings.keys 
+            };
+            ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => newS[k] = document.getElementById(`s-${k}`).checked);
+
+            chrome.storage.local.set({ag_settings: newS});
+            settings = newS;
+
+            const iframe = document.querySelector('iframe');
+            if (iframe?.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'AG_SETTINGS_UPDATE', settings: newS }, '*');
+            }
+        };
+
+        ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => {
+            document.getElementById(`s-${k}`).addEventListener('change', saveSettings);
+        });
+
+        const hideTimeSlider = document.getElementById('s-hideTime');
+        hideTimeSlider.oninput = (e) => document.getElementById('v-ht').textContent = e.target.value/1000;
+        hideTimeSlider.addEventListener('change', saveSettings);
         
         modal.querySelectorAll('.ag-key-btn').forEach(btn => {
             btn.onclick = () => {
@@ -336,36 +358,26 @@
                     btn.classList.remove('listening');
                     document.removeEventListener('keydown', activeKeyListener, true);
                     activeKeyListener = null;
+                    saveSettings();
                 };
                 document.addEventListener('keydown', activeKeyListener, true);
             };
         });
         
-        document.getElementById('ag-save').onclick = () => {
-            const newS = { 
-                hideTime: parseInt(document.getElementById('s-hideTime').value),
-                keys: settings.keys 
-            };
-            ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => newS[k] = document.getElementById(`s-${k}`).checked);
-
-            chrome.storage.local.set({ag_settings: newS});
-            settings = newS;
-
-            const iframe = document.querySelector('iframe');
-            if (iframe?.contentWindow) {
-                iframe.contentWindow.postMessage({ type: 'AG_SETTINGS_UPDATE', settings: newS }, '*');
-            }
-            overlay.click(); // Close cleanly
-        };
-
         document.getElementById('ag-reset').onclick = () => { 
-            chrome.storage.local.set({ag_settings: DEFAULT_SETTINGS});
-            settings = DEFAULT_SETTINGS;
+            const resetSettings = { ...settings };
+            ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => {
+                resetSettings[k] = false;
+                const checkbox = document.getElementById(`s-${k}`);
+                if (checkbox) checkbox.checked = false;
+            });
+
+            chrome.storage.local.set({ag_settings: resetSettings});
+            settings = resetSettings;
             const iframe = document.querySelector('iframe');
             if (iframe?.contentWindow) {
-                iframe.contentWindow.postMessage({ type: 'AG_SETTINGS_UPDATE', settings: DEFAULT_SETTINGS }, '*');
+                iframe.contentWindow.postMessage({ type: 'AG_SETTINGS_UPDATE', settings: resetSettings }, '*');
             }
-            overlay.click(); // Close cleanly
         };
     };
 
