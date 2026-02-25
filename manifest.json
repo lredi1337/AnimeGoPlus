@@ -39,14 +39,21 @@
     {
       "matches": [
         "https://animego.me/*",
-        "https://animego.org/*",
+        "https://animego.org/*"
+      ],
+      "js": ["config.js", "content-animego.js"],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
         "https://*.kodik.info/*",
         "https://*.dbcode.info/*",
         "https://*.kodik-storage.com/*",
         "https://*.cloud.kodik-storage.com/*",
         "https://*.tube-storage.com/*"
       ],
-      "js": ["content.js"],
+      "js": ["config.js", "content-kodik.js"],
       "run_at": "document_end",
       "all_frames": true
     }
