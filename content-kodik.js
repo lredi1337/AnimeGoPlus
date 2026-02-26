@@ -1,30 +1,30 @@
-(async function() {
+(async function () {
     'use strict';
-    
+
     let settings = await window.getSettings();
 
     // ==========================================
     // --- ЛОГИКА ВНУТРИ ПЛЕЕРА (IFRAME) ---
     // ==========================================
     let hideTimeout, rewindSum = 0, rewindTimer = null, clickCount = 0, clickTimer = null;
-    let canAutoPlay = false; 
+    let canAutoPlay = false;
     let skipData = { op: { start: 0, end: 0 }, ed: { start: 0, end: 0 } };
     let currentSkipTarget = null;
 
     function applyVisualSettings() {
         const navs = document.querySelectorAll('.ag-nav');
         navs.forEach(el => el.style.display = settings.showNav ? 'flex' : 'none');
-        
+
         const skipBtn = document.getElementById('ag-skip');
         if (skipBtn) skipBtn.style.display = settings.showSkipBtn ? 'flex' : 'none';
-        
+
         const centerBtns = document.querySelectorAll('.ag-center-btn');
         centerBtns.forEach(el => el.style.display = settings.showCenterBtn ? 'flex' : 'none');
     }
 
     document.addEventListener('keydown', (e) => {
-        if (e.repeat) return; 
-        
+        if (e.repeat) return;
+
         const pressed = [];
         if (e.ctrlKey) pressed.push('ctrl');
         if (e.altKey) pressed.push('alt');
@@ -39,7 +39,7 @@
 
         if (combo === settings.keys.fs) {
             e.preventDefault(); e.stopPropagation();
-            window.parent.postMessage({type: 'AG_PSEUDO_FS', action: 'toggle'}, '*');
+            window.parent.postMessage({ type: 'AG_PSEUDO_FS', action: 'toggle' }, '*');
         }
         else if (combo === settings.keys.forward) {
             e.preventDefault(); e.stopPropagation();
@@ -51,11 +51,11 @@
         }
         else if (combo === settings.keys.next) {
             e.preventDefault(); e.stopPropagation();
-            window.parent.postMessage({type:'AG_NAV', dir:'next'}, '*');
+            window.parent.postMessage({ type: 'AG_NAV', dir: 'next' }, '*');
         }
         else if (combo === settings.keys.prev) {
             e.preventDefault(); e.stopPropagation();
-            window.parent.postMessage({type:'AG_NAV', dir:'prev'}, '*');
+            window.parent.postMessage({ type: 'AG_NAV', dir: 'prev' }, '*');
         }
         else if (combo === settings.keys.skip) {
             e.preventDefault(); e.stopPropagation();
@@ -63,12 +63,12 @@
                 v.currentTime = currentSkipTarget;
                 showFlash("Skipped!");
             } else {
-                v.currentTime += 85; 
+                v.currentTime += 85;
                 showFlash("Skip +85s");
             }
         }
         else if (e.key === 'Escape') {
-            window.parent.postMessage({type: 'AG_PSEUDO_FS', action: 'disable'}, '*');
+            window.parent.postMessage({ type: 'AG_PSEUDO_FS', action: 'disable' }, '*');
         }
     });
 
@@ -76,7 +76,7 @@
         if (!window.isValidOrigin(e.origin)) return; // Security check
 
         if (e.data?.type === 'AG_MARATHON_CONFIRM') {
-            canAutoPlay = true; 
+            canAutoPlay = true;
             if (!settings.autoPlay) return;
             const playBtn = document.querySelector('.play_button');
             if (playBtn && !playBtn.dataset.agAutoclicked) {
@@ -89,8 +89,8 @@
             document.body.classList.add('ag-fs-transitioning');
             setTimeout(() => document.body.classList.remove('ag-fs-transitioning'), 300);
         }
-        
-        if (e.data?.type === 'AS_DATA_UPDATE') { 
+
+        if (e.data?.type === 'AS_DATA_UPDATE') {
             skipData = e.data.data;
             const v = document.querySelector('video');
             if (v) updateTimelineZones(v);
@@ -100,11 +100,11 @@
             settings = e.data.settings;
             applyVisualSettings();
             const ui = document.getElementById('ag-ui');
-            if (ui) { ui.style.opacity = '1'; clearTimeout(hideTimeout); hideTimeout=setTimeout(()=>ui.style.opacity='0', settings.hideTime); }
+            if (ui) { ui.style.opacity = '1'; clearTimeout(hideTimeout); hideTimeout = setTimeout(() => ui.style.opacity = '0', settings.hideTime); }
         }
     });
 
-    window.parent.postMessage({type: 'AG_PLAYER_READY'}, '*');
+    window.parent.postMessage({ type: 'AG_PLAYER_READY' }, '*');
 
     const playObserver = new MutationObserver(() => {
         if (!settings.autoPlay) return;
@@ -115,14 +115,14 @@
                 setTimeout(() => { if (playBtn) playBtn.click(); }, 600);
             } else {
                 playBtn.addEventListener('click', () => {
-                    window.parent.postMessage({type: 'AG_START_MARATHON'}, '*');
+                    window.parent.postMessage({ type: 'AG_START_MARATHON' }, '*');
                 }, { once: true });
             }
         }
     });
-    playObserver.observe(document.body, {childList: true, subtree: true});
+    playObserver.observe(document.body, { childList: true, subtree: true });
 
-    function sendFs(action) { window.parent.postMessage({type: 'AG_PSEUDO_FS', action: action}, '*'); }
+    function sendFs(action) { window.parent.postMessage({ type: 'AG_PSEUDO_FS', action: action }, '*'); }
     function doRewind(s, v) {
         rewindSum += s; showFlash(`${rewindSum > 0 ? '+' : ''}${rewindSum}с`);
         clearTimeout(rewindTimer);
@@ -154,7 +154,7 @@
             tooltipText = document.createElement('span');
             tooltipText.id = 'ag-timeline-tooltip-text';
             tooltip.appendChild(tooltipText);
-            
+
             const arrow = document.createElement('div');
             arrow.style = `
                 position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
@@ -183,7 +183,7 @@
 
         const createZone = (start, end, label) => {
             if (start < 0 || end <= 0) return;
-            
+
             const left = (start / v.duration) * 100;
             const width = ((end - start) / v.duration) * 100;
             const zone = document.createElement('div');
@@ -209,8 +209,8 @@
             container.appendChild(zone);
         };
 
-        createZone(skipData.op.start, skipData.op.end, "Опенинг");
-        createZone(skipData.ed.start, v.duration, "Эндинг");
+        if (skipData.op.end > 0) createZone(skipData.op.start, skipData.op.end, "Опенинг");
+        if (skipData.ed.start > 0) createZone(skipData.ed.start, v.duration, "Эндинг");
     }
 
     function setupSmartSkip(v) {
@@ -233,35 +233,35 @@
             const now = Date.now();
             if (now - lastTimeUpdate < 500) return; // Оптимизация: запускаем логику не чаще 2 раз в секунду
             lastTimeUpdate = now;
-            
+
             const cur = v.currentTime;
-            
+
             // Оптимизация: offsetParent работает быстрее, чем getComputedStyle
             const nativeSkip = Array.from(document.querySelectorAll('[class*="skip"]'))
                 .find(el => el.offsetParent !== null && el.innerText.trim().length > 0);
-            
-            if (nativeSkip) { 
-                btn.style.display = "none"; 
+
+            if (nativeSkip) {
+                btn.style.display = "none";
                 currentSkipTarget = null;
-                return; 
+                return;
             }
-            
+
             let skipTarget = null;
-            
+
             if (skipData.op.end > 0 && cur >= skipData.op.start && cur <= skipData.op.end) {
                 btn.innerText = "Пропустить опенинг"; skipTarget = skipData.op.end;
             } else if (skipData.ed.start > 0 && cur >= skipData.ed.start && cur <= (v.duration - 5)) {
                 btn.innerText = "Пропустить эндинг"; skipTarget = v.duration - 1;
             }
-            
+
             currentSkipTarget = skipTarget;
 
             if (skipTarget) {
-                if (settings.autoSkip) { v.currentTime = skipTarget; btn.style.display = "none"; } 
+                if (settings.autoSkip) { v.currentTime = skipTarget; btn.style.display = "none"; }
                 else { btn.style.display = "block"; btn.onclick = (e) => { e.stopPropagation(); v.currentTime = skipTarget; }; }
             } else { btn.style.display = "none"; }
         });
-        
+
         v.addEventListener('loadedmetadata', () => updateTimelineZones(v));
     }
 
@@ -309,25 +309,25 @@
         const doc = parser.parseFromString(`<div class="ag-btn ag-nav" style="left:0" id="ag-p"><span>&lt;</span><div id="ag-pn" class="ag-num"></div></div><div class="ag-btn ag-nav" style="right:0" id="ag-n"><span>&gt;</span><div id="ag-nn" class="ag-num"></div></div><div class="ag-btn" id="ag-skip"><span>»</span></div><div class="ag-btn ag-center-btn" id="ag-c1">«5</div><div class="ag-btn ag-center-btn" id="ag-c2">5»</div><div id="ag-flash"></div><div class="ag-click-zone" style="left:0; width:20%;" id="z-p"></div><div class="ag-click-zone" style="right:0; width:20%;" id="z-n"></div><div class="ag-click-zone" style="left:20%; width:60%;" id="z-m"></div><div id="ag-fs-patch"></div><div id="ag-tooltip">Better UI: Расширить плеер</div>`, 'text/html');
         ui.replaceChildren(...doc.body.childNodes);
         document.body.appendChild(ui);
-        
+
         applyVisualSettings();
 
         document.getElementById('ag-fs-patch').onclick = () => sendFs('toggle');
-        document.getElementById('ag-p').onclick = () => window.parent.postMessage({type:'AG_NAV', dir:'prev'}, '*');
-        document.getElementById('ag-n').onclick = () => window.parent.postMessage({type:'AG_NAV', dir:'next'}, '*');
+        document.getElementById('ag-p').onclick = () => window.parent.postMessage({ type: 'AG_NAV', dir: 'prev' }, '*');
+        document.getElementById('ag-n').onclick = () => window.parent.postMessage({ type: 'AG_NAV', dir: 'next' }, '*');
         document.getElementById('ag-skip').onclick = () => v.currentTime += 90;
         document.getElementById('ag-c1').onclick = () => doRewind(-5, v);
         document.getElementById('ag-c2').onclick = () => doRewind(5, v);
         document.getElementById('z-p').onclick = (e) => handleZone(e, 'prev', v);
         document.getElementById('z-n').onclick = (e) => handleZone(e, 'next', v);
         document.getElementById('z-m').onclick = (e) => handleZone(e, 'mid', v);
-        
+
         // Throttled mousemove
         let moveTimer;
         window.addEventListener('mousemove', () => {
             if (moveTimer) return;
             moveTimer = setTimeout(() => { moveTimer = null; }, 150);
-            if (ui.style.opacity !== '1') ui.style.opacity = '1'; 
+            if (ui.style.opacity !== '1') ui.style.opacity = '1';
             clearTimeout(hideTimeout);
             hideTimeout = setTimeout(() => ui.style.opacity = '0', settings.hideTime);
         });
@@ -339,25 +339,25 @@
                 if (document.getElementById('ag-nn')) document.getElementById('ag-nn').textContent = getN(e.data.nextTitle);
             }
         });
-        setInterval(() => window.parent.postMessage({type:'AG_GET_DATA'}, '*'), 2000);
+        setInterval(() => window.parent.postMessage({ type: 'AG_GET_DATA' }, '*'), 2000);
     }
 
     // Оптимизация: используем MutationObserver вместо setInterval
     const iframeObserver = new MutationObserver(() => {
         const v = document.querySelector('video');
-        if (v && !v.dataset.agInit) { 
-            v.dataset.agInit = '1'; drawUI(v); 
-            v.addEventListener('play', () => { if(settings.autoFS) sendFs('enable'); }, {once:true});
-            v.onended = () => { if(settings.autoNext) window.parent.postMessage({type:'AG_NAV', dir:'next'}, '*'); }; 
+        if (v && !v.dataset.agInit) {
+            v.dataset.agInit = '1'; drawUI(v);
+            v.addEventListener('play', () => { if (settings.autoFS) sendFs('enable'); }, { once: true });
+            v.onended = () => { if (settings.autoNext) window.parent.postMessage({ type: 'AG_NAV', dir: 'next' }, '*'); };
         }
-        if (settings.autoSkip) { 
-            document.querySelectorAll('[class*="skip"]').forEach(btn => { 
+        if (settings.autoSkip) {
+            document.querySelectorAll('[class*="skip"]').forEach(btn => {
                 const text = btn.textContent.toLowerCase();
                 if ((text.includes('пропустить') || text.includes('skip')) && !btn.dataset.agDone) {
                     btn.dataset.agDone = '1';
                     const seekTime = btn.getAttribute('data-seek-to');
                     const video = document.querySelector('video');
-                    if (seekTime && video) { video.currentTime = parseFloat(seekTime); } 
+                    if (seekTime && video) { video.currentTime = parseFloat(seekTime); }
                     else {
                         const opts = { bubbles: true, cancelable: true, view: window };
                         btn.dispatchEvent(new MouseEvent('mousedown', opts));
@@ -365,7 +365,7 @@
                         btn.click();
                     }
                 }
-            }); 
+            });
         }
     });
     iframeObserver.observe(document.body, { childList: true, subtree: true });
