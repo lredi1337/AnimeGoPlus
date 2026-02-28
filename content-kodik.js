@@ -2,6 +2,7 @@
     'use strict';
 
     let settings = await window.getSettings();
+    if (settings.global_enabled === false) return;
 
     // ==========================================
     // --- ЛОГИКА ВНУТРИ ПЛЕЕРА (IFRAME) ---
@@ -106,21 +107,7 @@
 
     window.parent.postMessage({ type: 'AG_PLAYER_READY' }, '*');
 
-    const playObserver = new MutationObserver(() => {
-        if (!settings.autoPlay) return;
-        const playBtn = document.querySelector('.play_button');
-        if (playBtn && !playBtn.dataset.agAutoclicked) {
-            if (canAutoPlay) {
-                playBtn.dataset.agAutoclicked = '1';
-                setTimeout(() => { if (playBtn) playBtn.click(); }, 600);
-            } else {
-                playBtn.addEventListener('click', () => {
-                    window.parent.postMessage({ type: 'AG_START_MARATHON' }, '*');
-                }, { once: true });
-            }
-        }
-    });
-    playObserver.observe(document.body, { childList: true, subtree: true });
+    // Note: Play button logic has been merged into iframeObserver to reduce MutationObserver overhead.
 
     function sendFs(action) { window.parent.postMessage({ type: 'AG_PSEUDO_FS', action: action }, '*'); }
     function doRewind(s, v) {
@@ -236,9 +223,24 @@
 
             const cur = v.currentTime;
 
-            // Оптимизация: offsetParent работает быстрее, чем getComputedStyle
-            const nativeSkip = Array.from(document.querySelectorAll('[class*="skip"]'))
-                .find(el => el.offsetParent !== null && el.innerText.trim().length > 0);
+            const isOpTarget = skipData.op.end > 0 && cur >= skipData.op.start && cur <= skipData.op.end;
+            const isEdTarget = skipData.ed.start > 0 && cur >= skipData.ed.start;
+
+            let skipTarget = null;
+            let nativeSkip = null;
+
+            if (isOpTarget || isEdTarget) {
+                // Оптимизация: ищем родную кнопку, только когда потенциально находимся в зоне пропуска (Опенинг / Эндинг)
+                nativeSkip = Array.from(document.querySelectorAll('[class*="skip"]'))
+                    .find(el => {
+                        if (el.offsetParent === null) return false;
+                        const text = el.innerText.trim().toLowerCase();
+                        if (!text.includes('пропустить') && !text.includes('skip')) return false;
+
+                        const style = window.getComputedStyle(el);
+                        return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+                    });
+            }
 
             if (nativeSkip) {
                 btn.style.display = "none";
@@ -246,12 +248,17 @@
                 return;
             }
 
-            let skipTarget = null;
-
-            if (skipData.op.end > 0 && cur >= skipData.op.start && cur <= skipData.op.end) {
+            if (isOpTarget) {
                 btn.innerText = "Пропустить опенинг"; skipTarget = skipData.op.end;
-            } else if (skipData.ed.start > 0 && cur >= skipData.ed.start && cur <= (v.duration - 5)) {
-                btn.innerText = "Пропустить эндинг"; skipTarget = v.duration - 1;
+            } else if (isEdTarget) {
+                // Если мы находимся в пределах эндинга или после него
+                if (skipData.ed.end > 0 && cur <= skipData.ed.end) {
+                    btn.innerText = "Пропустить эндинг";
+                    skipTarget = (v.duration - skipData.ed.end > 5) ? skipData.ed.end : v.duration - 1;
+                } else if (!skipData.ed.end && cur <= (v.duration - 5)) {
+                    btn.innerText = "Пропустить эндинг";
+                    skipTarget = v.duration - 1;
+                }
             }
 
             currentSkipTarget = skipTarget;
@@ -339,7 +346,9 @@
                 if (document.getElementById('ag-nn')) document.getElementById('ag-nn').textContent = getN(e.data.nextTitle);
             }
         });
-        setInterval(() => window.parent.postMessage({ type: 'AG_GET_DATA' }, '*'), 2000);
+
+        // Запрос данных заголовков при запуске (интервал удален для оптимизации)
+        window.parent.postMessage({ type: 'AG_GET_DATA' }, '*');
     }
 
     // Оптимизация: используем MutationObserver вместо setInterval
@@ -366,6 +375,21 @@
                     }
                 }
             });
+        }
+
+        // Обработка кнопки play (перенесена из отдельного обсервера для оптимизации)
+        if (settings.autoPlay) {
+            const playBtn = document.querySelector('.play_button');
+            if (playBtn && !playBtn.dataset.agAutoclicked) {
+                if (canAutoPlay) {
+                    playBtn.dataset.agAutoclicked = '1';
+                    setTimeout(() => { if (playBtn) playBtn.click(); }, 600);
+                } else {
+                    playBtn.addEventListener('click', () => {
+                        window.parent.postMessage({ type: 'AG_START_MARATHON' }, '*');
+                    }, { once: true });
+                }
+            }
         }
     });
     iframeObserver.observe(document.body, { childList: true, subtree: true });

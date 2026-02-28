@@ -1,7 +1,9 @@
-(async function() {
+(async function () {
     'use strict';
     const { AG_RED, AG_FONT, DEFAULT_SETTINGS, isValidOrigin, getSettings } = window;
     let settings = await getSettings();
+
+    if (settings.global_enabled === false) return;
 
     // ==========================================
     // --- ЛОГИКА ANIMEGO (Сайт) ---
@@ -44,14 +46,14 @@
         return match ? match[1] : null;
     };
 
-    let cachedSkipData = null; 
-    let lastFetchedEp = null;  
+    let cachedSkipData = null;
+    let lastFetchedEp = null;
 
     async function syncAniSkip(forceSendToWindow = null) {
         const titleEl = document.querySelector('.entity__title h1');
         const sel = document.querySelector("select[name='series']");
-        const currentEp = (sel && sel.options && sel.options[sel.selectedIndex]) 
-            ? sel.options[sel.selectedIndex].textContent.match(/\d+/)?.[0] 
+        const currentEp = (sel && sel.options && sel.options[sel.selectedIndex])
+            ? sel.options[sel.selectedIndex].textContent.match(/\d+/)?.[0]
             : "1";
 
         if (forceSendToWindow && cachedSkipData && lastFetchedEp === currentEp) {
@@ -70,7 +72,7 @@
                     if (ratingContainer && !document.getElementById('ag-shiki-btn')) {
                         const shikiUrl = `https://shikimori.one${shiki[0].url}`;
                         const malUrl = `https://myanimelist.net/anime/${shiki[0].id}`;
-                        
+
                         const createBtn = (id, text, url, bgColor) => {
                             const btn = document.createElement('a');
                             btn.id = id;
@@ -120,28 +122,28 @@
         const container = document.querySelector('.player__video');
         if (!container) return;
         const isActive = container.classList.contains('ag-pseudo-fs-active');
-        
+
         const shouldDisable = (enable === 'disable') || (enable === 'toggle' && isActive);
-        
+
         // Отключаем все CSS-анимации на сайте на время переключения
         document.body.classList.add('ag-fs-transitioning');
-        
+
         const screenW = window.screen.width;
         const screenH = window.screen.height;
-        
+
         if (shouldDisable) {
             chrome.runtime.sendMessage({ action: "fullscreen_off" });
-            container.querySelector('iframe')?.contentWindow.postMessage({type: 'AG_FS_STATE', active: false}, '*');
-            
+            container.querySelector('iframe')?.contentWindow.postMessage({ type: 'AG_FS_STATE', active: false }, '*');
+
             // Ждем окончания анимации окна перед тем как вернуть плеер в поток
             let resizeTimer;
             let fallbackTimer;
-            
+
             const onResize = () => {
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(finishExit, 100);
             };
-            
+
             const finishExit = () => {
                 clearTimeout(fallbackTimer);
                 clearTimeout(resizeTimer);
@@ -153,7 +155,7 @@
                 document.body.classList.remove('ag-fs-transitioning');
                 window.removeEventListener('resize', onResize);
             };
-            
+
             window.addEventListener('resize', onResize);
             // Fallback timeout in case resize events don't fire or finish quickly
             fallbackTimer = setTimeout(finishExit, 600);
@@ -163,16 +165,16 @@
             if (scrollbarWidth > 0) {
                 document.body.style.paddingRight = `${scrollbarWidth}px`;
             }
-            
+
             // Фиксируем размер контейнера на время анимации окна (вход в фуллскрин)
             container.style.setProperty('width', screenW + 'px', 'important');
             container.style.setProperty('height', screenH + 'px', 'important');
-            
+
             container.classList.add('ag-pseudo-fs-active');
             document.body.classList.add('ag-no-scroll');
             chrome.runtime.sendMessage({ action: "fullscreen_on" });
-            container.querySelector('iframe')?.contentWindow.postMessage({type: 'AG_FS_STATE', active: true}, '*');
-            
+            container.querySelector('iframe')?.contentWindow.postMessage({ type: 'AG_FS_STATE', active: true }, '*');
+
             // После завершения анимации окна убираем жесткие размеры
             setTimeout(() => {
                 container.style.removeProperty('width');
@@ -180,7 +182,7 @@
                 document.body.classList.remove('ag-fs-transitioning');
             }, 400);
         }
-        
+
         // Принудительный reflow
         void document.body.offsetHeight;
     };
@@ -189,7 +191,7 @@
         const btn = document.querySelector('.resume-button');
         if (btn && !btn.dataset.agDone) {
             btn.dataset.agDone = '1';
-            
+
             const activateMarathon = () => {
                 const currentId = getAnimeId();
                 if (currentId) sessionStorage.setItem('ag_active_marathon_id', currentId);
@@ -199,14 +201,14 @@
                         // Ensure iframe knows about the full-screen state
                         const container = document.querySelector('.player__video');
                         if (container) {
-                            container.querySelector('iframe')?.contentWindow.postMessage({type: 'AG_FS_STATE', active: true}, '*');
+                            container.querySelector('iframe')?.contentWindow.postMessage({ type: 'AG_FS_STATE', active: true }, '*');
                         }
                     }, 300);
                 }
             };
 
             btn.addEventListener('mousedown', activateMarathon);
-            btn.addEventListener('click', activateMarathon); 
+            btn.addEventListener('click', activateMarathon);
         }
     };
 
@@ -219,8 +221,8 @@
             let pT = "", nT = "";
             if (sel) {
                 const i = sel.selectedIndex;
-                if (sel.options[i-1]) pT = sel.options[i-1].textContent;
-                if (sel.options[i+1]) nT = sel.options[i+1].textContent;
+                if (sel.options[i - 1]) pT = sel.options[i - 1].textContent;
+                if (sel.options[i + 1]) nT = sel.options[i + 1].textContent;
             }
             e.source.postMessage({ type: 'AG_DATA', prevTitle: pT, nextTitle: nT }, '*');
             syncAniSkip(e.source);
@@ -233,13 +235,13 @@
                     setPseudoFS('enable');
                     const container = document.querySelector('.player__video');
                     if (container) {
-                        container.querySelector('iframe')?.contentWindow.postMessage({type: 'AG_FS_STATE', active: true}, '*');
+                        container.querySelector('iframe')?.contentWindow.postMessage({ type: 'AG_FS_STATE', active: true }, '*');
                     }
                 }, 300);
             }
         }
         if (e.data?.type === 'AG_PSEUDO_FS') setPseudoFS(e.data.action);
-        
+
         if (e.data?.type === 'AG_NAV') {
             const btn = document.querySelector(e.data.dir === 'next' ? '.next.m-ep-arrow' : '.prev.m-ep-arrow');
             if (btn) {
@@ -260,7 +262,25 @@
     const modal = document.createElement('div'); modal.id = 'ag-settings-modal';
     document.body.append(overlay, modal);
 
-    const renderRow = (id, title, desc) => `<div class="ag-set-row"><span>${title}</span><label class="ag-switch"><input type="checkbox" id="s-${id}" ${settings[id]?'checked':''}> <span class="ag-slider"></span></label></div><div class="ag-set-desc">${desc}</div>`;
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.type === 'AG_GET_PAGE_INFO') {
+            const titleEl = document.querySelector('.entity__title h1');
+            const animeTitle = titleEl ? titleEl.innerText.split('/')[0].trim() : null;
+
+            // Пытаемся получить текущий эпизод
+            const sel = document.querySelector("select[name='series']");
+            const currentEp = (sel && sel.options && sel.options[sel.selectedIndex])
+                ? sel.options[sel.selectedIndex].textContent.match(/\d+/)?.[0]
+                : "1";
+
+            sendResponse({ title: animeTitle, episode: currentEp });
+        }
+        if (request.type === 'AG_OPEN_SETTINGS') {
+            openSettings();
+        }
+    });
+
+    const renderRow = (id, title, desc) => `<div class="ag-set-row"><span>${title}</span><label class="ag-switch"><input type="checkbox" id="s-${id}" ${settings[id] ? 'checked' : ''}> <span class="ag-slider"></span></label></div><div class="ag-set-desc">${desc}</div>`;
     const renderKeyRow = (action, title, desc) => `<div class="ag-set-row"><span>${title}</span><button class="ag-key-btn" data-action="${action}">${settings.keys[action]}</button></div><div class="ag-set-desc">${desc}</div>`;
 
     let activeKeyListener = null;
@@ -285,7 +305,7 @@
             ${renderRow('showDBL', 'Двойной клик', 'Перемотка по краям и фуллскрин в центре по 2-му клику.')}
             
             <div class="ag-set-group">Тайминги</div>
-            <div class="ag-set-row"><span>Меню исчезает через: <span id="v-ht">${settings.hideTime/1000}</span>с</span></div>
+            <div class="ag-set-row"><span>Меню исчезает через: <span id="v-ht">${settings.hideTime / 1000}</span>с</span></div>
             <input type="range" id="s-hideTime" min="500" max="5000" step="500" value="${settings.hideTime}" style="width:100%; accent-color:${AG_RED}">
 
             <div class="ag-set-group">Управление / Hotkeys</div>
@@ -299,22 +319,22 @@
             <div class="ag-footer-btns">
                 <button id="ag-reset" class="ag-btn-main" style="background:#2a2a2a; color:#888;">Выключить всё</button>
             </div>`;
-            
+
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         modal.replaceChildren(...doc.body.childNodes);
-            
+
         overlay.style.display = modal.style.display = 'block';
         document.body.classList.add('ag-modal-open');
 
         const saveSettings = () => {
-            const newS = { 
+            const newS = {
                 hideTime: parseInt(document.getElementById('s-hideTime').value),
-                keys: settings.keys 
+                keys: settings.keys
             };
             ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => newS[k] = document.getElementById(`s-${k}`).checked);
 
-            chrome.storage.local.set({ag_settings: newS});
+            chrome.storage.local.set({ ag_settings: newS });
             settings = newS;
 
             const iframe = document.querySelector('iframe');
@@ -328,15 +348,15 @@
         });
 
         const hideTimeSlider = document.getElementById('s-hideTime');
-        hideTimeSlider.oninput = (e) => document.getElementById('v-ht').textContent = e.target.value/1000;
+        hideTimeSlider.oninput = (e) => document.getElementById('v-ht').textContent = e.target.value / 1000;
         hideTimeSlider.addEventListener('change', saveSettings);
-        
+
         modal.querySelectorAll('.ag-key-btn').forEach(btn => {
             btn.onclick = () => {
                 const action = btn.dataset.action;
                 btn.innerText = "Жду...";
                 btn.classList.add('listening');
-                
+
                 if (activeKeyListener) {
                     document.removeEventListener('keydown', activeKeyListener, true);
                 }
@@ -350,10 +370,10 @@
                     if (e.altKey) pressed.push('alt');
                     if (e.shiftKey) pressed.push('shift');
                     pressed.push(e.key.toLowerCase());
-                    
+
                     const combo = pressed.join('+');
-                    settings.keys[action] = combo; 
-                    
+                    settings.keys[action] = combo;
+
                     btn.innerText = combo;
                     btn.classList.remove('listening');
                     document.removeEventListener('keydown', activeKeyListener, true);
@@ -363,8 +383,8 @@
                 document.addEventListener('keydown', activeKeyListener, true);
             };
         });
-        
-        document.getElementById('ag-reset').onclick = () => { 
+
+        document.getElementById('ag-reset').onclick = () => {
             const resetSettings = { ...settings };
             ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => {
                 resetSettings[k] = false;
@@ -372,7 +392,7 @@
                 if (checkbox) checkbox.checked = false;
             });
 
-            chrome.storage.local.set({ag_settings: resetSettings});
+            chrome.storage.local.set({ ag_settings: resetSettings });
             settings = resetSettings;
             const iframe = document.querySelector('iframe');
             if (iframe?.contentWindow) {
@@ -393,12 +413,17 @@
     // Оптимизация: используем MutationObserver вместо setInterval
     let syncTimeout = null;
     const mainObserver = new MutationObserver(() => {
-        const kodikBtn = document.querySelector('button[data-provider-title*="Kodik"]');
+        // Попытка найти кнопку Kodik (так как селекторы AnimeGo могли измениться)
+        const kodikBtn = document.querySelector('span[data-provider="2"]') ||
+            document.querySelector('li[data-provider="2"]') ||
+            document.querySelector('[data-provider-title*="Kodik"]');
+
         if (kodikBtn && !kodikBtn.classList.contains('active') && !kodikBtn.dataset.agDone) {
-            kodikBtn.dataset.agDone = '1'; kodikBtn.click();
+            kodikBtn.dataset.agDone = '1';
+            kodikBtn.click();
         }
         handleResume();
-        
+
         // Debounce syncAniSkip to avoid spamming API during heavy DOM changes
         if (!syncTimeout) {
             syncTimeout = setTimeout(() => {
@@ -409,7 +434,7 @@
 
         const tabs = document.getElementById('video-player');
         if (tabs && !document.getElementById('ag-settings-btn')) {
-            const li = document.createElement('li'); li.className='nav-item';
+            const li = document.createElement('li'); li.className = 'nav-item';
             const btn = document.createElement('button');
             btn.className = 'nav-link fs-5';
             btn.id = 'ag-settings-btn';

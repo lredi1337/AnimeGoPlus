@@ -1,0 +1,264 @@
+:root {
+    --bg: #1a1a1a;
+    --card: #252525;
+    --text: #ffffff;
+    --text-muted: #888888;
+    --primary: #e53935;
+    --primary-hover: #ef5350;
+    --success: #4caf50;
+    --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+html {
+    background-color: transparent !important;
+}
+
+body {
+    margin: 0;
+    padding: 16px;
+    width: 320px;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    box-sizing: border-box;
+    border: none;
+    outline: none;
+}
+
+/* Header & Brand */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.brand {
+    margin: 0;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.brand span {
+    color: var(--primary);
+}
+
+.watermark {
+    font-size: 10px;
+    color: #555;
+    font-family: var(--font);
+    margin-top: -2px;
+}
+
+/* Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #444;
+    transition: .3s;
+    border-radius: 20px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: var(--primary);
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
+
+/* Status Box */
+.status-box {
+    display: flex;
+    align-items: center;
+    background-color: var(--card);
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 10px;
+    background-color: var(--text-muted);
+}
+
+.status-indicator.active {
+    background-color: var(--success);
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+}
+
+.status-indicator.inactive {
+    background-color: var(--text-muted);
+}
+
+/* Sections */
+.section {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #333;
+}
+
+.section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--primary);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    font-weight: bold;
+}
+
+/* Music Container */
+.music-container {
+    background-color: var(--card);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 13px;
+}
+
+.loading-text {
+    color: var(--text-muted);
+    text-align: center;
+    font-style: italic;
+    font-size: 12px;
+}
+
+.track-item {
+    margin-bottom: 12px;
+    padding: 12px;
+    background-color: #212121;
+    border-radius: 8px;
+    border: 1px solid #333;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.track-item:hover {
+    background-color: #292929;
+    border-color: #444;
+}
+
+.track-item:last-child {
+    margin-bottom: 0;
+}
+
+.track-label {
+    font-weight: 800;
+    color: var(--primary);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.track-name {
+    margin-bottom: 10px;
+    line-height: 1.4;
+    font-size: 13px;
+    font-weight: 500;
+    color: #eee;
+}
+
+.btn-youtube {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    background-color: #2a2a2a;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 6px;
+    text-align: center;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: bold;
+    transition: all 0.2s;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.btn-youtube:hover {
+    background-color: #ff0000;
+    border-color: #ff0000;
+    box-shadow: 0 4px 12px rgba(255, 0, 0, 0.25);
+    transform: translateY(-1px);
+}
+
+/* Buttons */
+.btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-weight: bold;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-bottom: 8px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn:last-of-type {
+    margin-bottom: 0;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn-secondary {
+    background-color: var(--card);
+    color: white;
+    border: 1px solid #444;
+}
+
+.btn-secondary:hover {
+    background-color: #333;
+    border-color: var(--primary);
+}
+
+.hint-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 8px;
+}

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnimeGO+ Settings</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="header">
+        <div style="display: flex; flex-direction: column;">
+            <h1 class="brand">AnimeGO<span>+</span></h1>
+            <span class="watermark">by l_red_i</span>
+        </div>
+        <label class="switch">
+            <input type="checkbox" id="global-toggle">
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="status-box" id="status-box">
+        <div class="status-indicator" id="status-dot"></div>
+        <span id="status-text">Ожидание...</span>
+    </div>
+
+    <!-- Section: Music Finder -->
+    <div class="section">
+        <div class="section-title">🎵 Музыка из аниме</div>
+        <div id="music-container" class="music-container">
+            <div class="loading-text" id="music-loading">Откройте страницу аниме...</div>
+            <div id="music-content" style="display: none;">
+                <div class="track-list" id="op-list"></div>
+                <div class="track-list" id="ed-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section: Quick Links -->
+    <div class="section" style="border-bottom: none; margin-bottom: 0px; padding-bottom: 0px;">
+        <div class="section-title">Быстрые ссылки</div>
+        <button class="btn btn-secondary" id="btn-shiki">Shikimori</button>
+        <button class="btn btn-secondary" id="btn-mal">MyAnimeList</button>
+    </div>
+
+
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
