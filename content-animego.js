@@ -8,6 +8,17 @@
     // ==========================================
     // --- ЛОГИКА ANIMEGO (Сайт) ---
     // ==========================================
+
+    // Перехватываем клик по кнопке "Случайное аниме" для принудительной перезагрузки страницы
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('a[href*="/anime/random"]');
+        if (target) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.location.href = window.location.origin + '/anime/random';
+        }
+    }, true);
+
     const style = document.createElement('style');
     style.innerText = `
         .ag-pseudo-fs-active, .ag-pseudo-fs-active * { transition: none !important; animation: none !important; }
@@ -66,8 +77,8 @@
             const rawTitle = titleEl.innerText.split('/')[0].trim();
             try {
                 const shiki = await fetch(`https://shikimori.one/api/animes?search=${encodeURIComponent(rawTitle)}&limit=1`).then(r => r.json());
+
                 if (shiki.length > 0) {
-                    // Добавляем кнопки Shikimori и MAL
                     const ratingContainer = document.querySelector('.entity__rating');
                     if (ratingContainer && !document.getElementById('ag-shiki-btn')) {
                         const shikiUrl = `https://shikimori.one${shiki[0].url}`;
@@ -86,20 +97,34 @@
                             return btn;
                         };
 
-                        ratingContainer.appendChild(createBtn('ag-shiki-btn', 'Shikimori', shikiUrl, '#212121'));
-                        ratingContainer.appendChild(createBtn('ag-mal-btn', 'MyAnimeList', malUrl, '#2e51a2'));
+                        let malScoreStr = '?';
+                        try {
+                            const jikanRes = await fetch(`https://api.jikan.moe/v4/anime/${shiki[0].id}`);
+                            const jikan = await jikanRes.json();
+                            if (jikan.data && jikan.data.score) {
+                                malScoreStr = jikan.data.score;
+                            }
+                        } catch (e) {
+                            console.error("Error fetching MAL score:", e);
+                        }
+
+                        ratingContainer.appendChild(createBtn('ag-shiki-btn', `Shikimori ★ ${shiki[0].score || '?'}`, shikiUrl, '#212121'));
+                        ratingContainer.appendChild(createBtn('ag-mal-btn', `MyAnimeList ★ ${malScoreStr}`, malUrl, '#2e51a2'));
                     }
 
                     const res = await fetch(`https://api.aniskip.com/v2/skip-times/${shiki[0].id}/${parseFloat(currentEp)}?types=op&types=ed&episodeLength=0`).then(r => r.json());
                     const data = { op: { start: 0, end: 0 }, ed: { start: 0, end: 0 } };
+
                     if (res.found) {
                         const op = res.results.find(r => r.skipType === 'op');
                         const ed = res.results.find(r => r.skipType === 'ed');
                         if (op) data.op = { start: op.interval.startTime, end: op.interval.endTime };
                         if (ed) data.ed = { start: ed.interval.startTime, end: ed.interval.endTime };
                     }
+
                     cachedSkipData = data;
                     lastFetchedEp = currentEp;
+
                     const iframe = document.querySelector('iframe');
                     if (iframe?.contentWindow) {
                         iframe.contentWindow.postMessage({ type: 'AS_DATA_UPDATE', data }, '*');
@@ -108,7 +133,9 @@
                         forceSendToWindow.postMessage({ type: 'AS_DATA_UPDATE', data }, '*');
                     }
                 }
-            } catch (e) { console.log('Skip Error:', e); }
+            } catch (e) {
+                console.log('Skip Error:', e);
+            }
         }
     }
 
@@ -447,5 +474,9 @@
         }
     });
     mainObserver.observe(document.body, { childList: true, subtree: true });
+
+    // Вызываем единоразово при загрузке страницы, чтобы кнопки в блоке рейтинга появлялись сразу, не дожидаясь скролла пользователя
+    syncAniSkip();
+
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setPseudoFS('disable'); overlay.click(); } });
 })();
