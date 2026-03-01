@@ -9,6 +9,18 @@
     // --- ЛОГИКА ANIMEGO (Сайт) ---
     // ==========================================
 
+    // Добавляем красивый плюс к логотипу (оригинальный span.name скрыт, логотип отрисован через SVG)
+    const brandLink = document.querySelector('.header-navbar__brand');
+    if (brandLink && !document.getElementById('ag-logo-plus')) {
+        const plusSpan = document.createElement('span');
+        plusSpan.id = 'ag-logo-plus';
+        plusSpan.innerText = '+';
+        plusSpan.style.cssText = `color: ${AG_RED}; font-weight: 900; font-size: 32px; line-height: 0.8; margin-left: 2px; padding-bottom: 2px; font-family: 'Nunito', 'Segoe UI', sans-serif; display: inline-block;`;
+        brandLink.appendChild(plusSpan);
+        brandLink.style.display = 'inline-flex';
+        brandLink.style.alignItems = 'center';
+    }
+
     // Перехватываем клик по кнопке "Случайное аниме" для принудительной перезагрузки страницы
     document.addEventListener('click', (e) => {
         const target = e.target.closest('a[href*="/anime/random"]');
