@@ -112,24 +112,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         let foundValidTrack = false;
 
         tracks.forEach((track, i) => {
-            // Разбор эпизодов из Jikan строки: "(eps 1-12)" или "(ep 13)"
-            let isTrackForCurrentEp = true; // По умолчанию считаем, что подходит ко всем, если не указано иное
+            // Разбор эпизодов из Jikan строки: "(eps 1-12)", "(ep 13)", "(eps 1-14, 16-20)", "(eps 200-)"
+            let isTrackForCurrentEp = false;
+            let hasEpInfo = false; // Если инфы нет вообще, считаем, что подходит
 
-            const epMatch = track.match(/\(eps?\s+([\d-]+)\)/i);
+            const epRegex = /\(eps?\s*([\d\-\,\s]+)\)/i;
+            const epMatch = track.match(epRegex);
+
             if (epMatch && epMatch[1]) {
-                const range = epMatch[1].split('-');
-                if (range.length === 2) {
-                    const start = parseInt(range[0], 10);
-                    const end = parseInt(range[1], 10);
-                    if (currentEp < start || currentEp > end) {
-                        isTrackForCurrentEp = false;
-                    }
-                } else {
-                    const exact = parseInt(range[0], 10);
-                    if (currentEp !== exact) {
-                        isTrackForCurrentEp = false;
+                hasEpInfo = true;
+                const rangesStr = epMatch[1].replace(/\s/g, ''); // Удаляем пробелы
+                const ranges = rangesStr.split(',');
+
+                for (const range of ranges) {
+                    if (range.includes('-')) {
+                        const parts = range.split('-');
+                        const start = parts[0] ? parseInt(parts[0], 10) : 1;
+                        const end = parts[1] ? parseInt(parts[1], 10) : Infinity; // Обработка открытых диапазонов типа "200-"
+                        if (currentEp >= start && currentEp <= end) {
+                            isTrackForCurrentEp = true;
+                            break;
+                        }
+                    } else {
+                        const exact = parseInt(range, 10);
+                        if (currentEp === exact) {
+                            isTrackForCurrentEp = true;
+                            break;
+                        }
                     }
                 }
+            } else {
+                // Если в строке трека вообще нет указания эпизодов, то он считается подходящим для всех
+                isTrackForCurrentEp = true;
             }
 
             if (!isTrackForCurrentEp) return;
@@ -139,7 +153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             div.className = 'track-item';
 
             // Очищаем название от "(eps ...)"
-            let cleanedName = track.replace(/\s*\(eps?.*?\)/i, '').trim();
+            let cleanedName = track.replace(/\(eps?.*?\)/i, '').trim();
 
             div.innerHTML = `
                 <div class="track-label">${label}</div>

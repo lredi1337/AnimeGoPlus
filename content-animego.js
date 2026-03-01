@@ -327,7 +327,7 @@
     const openSettings = () => {
         const html = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h4 style="color:${AG_RED}; margin:0; font-size:18px;">Better UI ⚙️</h4>
+                <h4 style="color:white; margin:0; font-size:18px;">AnimeGO<span style="color:${AG_RED};">+</span></h4>
                 <span style="color: #555; font-size: 11px; font-family: ${AG_FONT};">by l_red_i</span>
             </div>
             
