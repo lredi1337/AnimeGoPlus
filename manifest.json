@@ -3,6 +3,7 @@
   "name": "AnimeGO+",
   "version": "5.0",
   "description": "Улучшенный плеер с авто-пропуском опенингов и марафоном",
+  "homepage_url": "https://lredi1337.github.io/AnimeGoPlus/",
   "permissions": [
     "storage",
     "activeTab"
