@@ -30,7 +30,9 @@
     "https://*.cloud.kodik-storage.com/*",
     "https://*.tube-storage.com/*",
     "https://api.aniskip.com/*",
-    "https://shikimori.one/api/*"
+    "https://shikimori.one/*",
+    "https://shikimori.me/*",
+    "https://myanimelist.net/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -62,6 +64,18 @@
       ],
       "run_at": "document_end",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "https://shikimori.one/animes/*",
+        "https://shikimori.me/animes/*",
+        "https://myanimelist.net/anime/*"
+      ],
+      "js": [
+        "content-external.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
     }
   ]
 }
