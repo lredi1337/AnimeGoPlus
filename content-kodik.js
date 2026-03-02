@@ -249,14 +249,15 @@
             }
 
             if (isOpTarget) {
-                btn.innerText = "Пропустить опенинг"; skipTarget = skipData.op.end;
+                btn.innerText = "Пропустить опенинг";
+                skipTarget = skipData.op.end;
             } else if (isEdTarget) {
-                // Если мы находимся в пределах эндинга или после него
-                if (skipData.ed.end > 0 && cur <= skipData.ed.end) {
-                    btn.innerText = "Пропустить эндинг";
-                    skipTarget = (v.duration - skipData.ed.end > 5) ? skipData.ed.end : v.duration - 1;
-                } else if (!skipData.ed.end && cur <= (v.duration - 5)) {
-                    btn.innerText = "Пропустить эндинг";
+                btn.innerText = "Пропустить эндинг";
+                // Перематываем сразу на конец эндинга (если есть сцена после титров) 
+                // или в самый конец видео (за 1 сек до конца), без задержек.
+                if (skipData.ed.end > 0 && skipData.ed.end < v.duration) {
+                    skipTarget = skipData.ed.end;
+                } else {
                     skipTarget = v.duration - 1;
                 }
             }
