@@ -197,7 +197,7 @@
         };
 
         if (skipData.op.end > 0) createZone(skipData.op.start, skipData.op.end, "Опенинг");
-        if (skipData.ed.start > 0) createZone(skipData.ed.start, v.duration, "Эндинг");
+        if (skipData.ed.end > 0) createZone(skipData.ed.start, skipData.ed.end, "Эндинг");
     }
 
     function setupSmartSkip(v) {
@@ -224,7 +224,7 @@
             const cur = v.currentTime;
 
             const isOpTarget = skipData.op.end > 0 && cur >= skipData.op.start && cur <= skipData.op.end;
-            const isEdTarget = skipData.ed.start > 0 && cur >= skipData.ed.start;
+            const isEdTarget = skipData.ed.end > 0 && cur >= skipData.ed.start && cur <= skipData.ed.end;
 
             let skipTarget = null;
             let nativeSkip = null;
@@ -253,13 +253,7 @@
                 skipTarget = skipData.op.end;
             } else if (isEdTarget) {
                 btn.innerText = "Пропустить эндинг";
-                // Перематываем сразу на конец эндинга (если есть сцена после титров) 
-                // или в самый конец видео (за 1 сек до конца), без задержек.
-                if (skipData.ed.end > 0 && skipData.ed.end < v.duration) {
-                    skipTarget = skipData.ed.end;
-                } else {
-                    skipTarget = v.duration - 1;
-                }
+                skipTarget = skipData.ed.end;
             }
 
             currentSkipTarget = skipTarget;
@@ -280,7 +274,7 @@
         if (clickCount >= 2) {
             if (type === 'prev') doRewind(-5, v);
             if (type === 'next') doRewind(5, v);
-            if (type === 'mid') sendFs('toggle');
+            if (type === 'mid') document.getElementById('ag-fs-patch').click();
             clickCount = 0; clearTimeout(clickTimer);
         } else {
             clearTimeout(clickTimer);
@@ -329,6 +323,13 @@
         document.getElementById('z-p').onclick = (e) => handleZone(e, 'prev', v);
         document.getElementById('z-n').onclick = (e) => handleZone(e, 'next', v);
         document.getElementById('z-m').onclick = (e) => handleZone(e, 'mid', v);
+
+        // Главный фикс визуального бага: блокируем нативный браузерный даблклик, 
+        // чтобы сам плеер Kodik не реагировал на него и не включал свой нативный фуллскрин
+        const preventNativeDblClick = (e) => { e.preventDefault(); e.stopPropagation(); };
+        document.getElementById('z-p').ondblclick = preventNativeDblClick;
+        document.getElementById('z-n').ondblclick = preventNativeDblClick;
+        document.getElementById('z-m').ondblclick = preventNativeDblClick;
 
         // Throttled mousemove
         let moveTimer;
