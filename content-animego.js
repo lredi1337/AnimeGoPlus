@@ -341,11 +341,18 @@
             <div class="ag-set-group">Интерфейс</div>
             ${renderRow('showNav', 'Стрелки серий', 'Кнопки < и > по бокам.')}
             ${renderRow('showSkipBtn', 'Кнопка +90с', 'Кнопка пропуска опенинга.')}
-             ${renderRow('showPiP', 'Кнопка PiP', 'Специальная кнопка Картинка-в-Картинке.')}
+            ${renderRow('showPiP', 'Кнопка PiP', 'Специальная кнопка Картинка-в-Картинке.')}
             ${renderRow('showCenterBtn', 'Кнопки перемотки', 'Дополнительные кнопки -5с / +5с в центре.')}
             ${renderRow('showDBL', 'Двойной клик', 'Перемотка по краям и фуллскрин в центре по 2-му клику.')}
             
-            <div class="ag-set-group">Тайминги</div>
+            <div class="ag-set-group">Тайминги и Громкость</div>
+            <div class="ag-set-row"><span>Шаг громкости (скролл):</span>
+                <select id="s-volStep" style="background:#222; color:#fff; padding:5px; border-radius:4px; border:1px solid #333;">
+                    <option value="0.01" ${settings.volStep === 0.01 ? 'selected' : ''}>1%</option>
+                    <option value="0.05" ${settings.volStep === 0.05 ? 'selected' : ''}>5%</option>
+                    <option value="0.10" ${settings.volStep === 0.10 ? 'selected' : ''}>10%</option>
+                </select>
+            </div>
             <div class="ag-set-row"><span>Меню исчезает через: <span id="v-ht">${settings.hideTime / 1000}</span>с</span></div>
             <input type="range" id="s-hideTime" min="500" max="5000" step="500" value="${settings.hideTime}" style="width:100%; accent-color:${AG_RED}">
 
@@ -371,6 +378,7 @@
         const saveSettings = () => {
             const newS = {
                 hideTime: parseInt(document.getElementById('s-hideTime').value),
+                volStep: parseFloat(document.getElementById('s-volStep').value),
                 keys: settings.keys
             };
             ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showPiP', 'showCenterBtn', 'showDBL'].forEach(k => newS[k] = document.getElementById(`s-${k}`).checked);
@@ -387,6 +395,7 @@
         ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showPiP', 'showCenterBtn', 'showDBL'].forEach(k => {
             document.getElementById(`s-${k}`).addEventListener('change', saveSettings);
         });
+        document.getElementById('s-volStep').addEventListener('change', saveSettings);
 
         const hideTimeSlider = document.getElementById('s-hideTime');
         hideTimeSlider.oninput = (e) => document.getElementById('v-ht').textContent = e.target.value / 1000;

@@ -384,6 +384,67 @@
                 navigator.mediaSession.setActionHandler('nexttrack', () => window.parent.postMessage({ type: 'AG_NAV', dir: 'next' }, '*'));
             } catch (e) { console.warn("MediaSession not fully supported."); }
         }
+
+        // Общая функция для показа OSD
+        const showVolumeOSD = (vol) => {
+            let osd = document.getElementById('ag-vol-osd');
+            if (!osd) {
+                osd = document.createElement('div');
+                osd.id = 'ag-vol-osd';
+                osd.style = `
+                    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+                    background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px;
+                    border-radius: 8px; font-size: 20px; z-index: 9999999;
+                    pointer-events: none; transition: opacity 0.3s;
+                    font-family: ${window.AG_FONT}; border: 1px solid rgba(255,255,255,0.2);
+                    backdrop-filter: blur(10px);
+                `;
+                document.body.appendChild(osd);
+            }
+            const volPercent = Math.round(vol * 100);
+            osd.innerHTML = `🔊 ${volPercent}%`;
+            osd.style.opacity = '1';
+
+            clearTimeout(osd.hideTimeout);
+            osd.hideTimeout = setTimeout(() => {
+                osd.style.opacity = '0';
+            }, 1500);
+        };
+
+        // Управление громкостью колесиком мыши (исключительно при наведении на .fp-volume)
+        document.addEventListener('wheel', (e) => {
+            const volBar = e.target.closest('.fp-volume');
+            if (volBar) {
+                e.preventDefault();
+                const step = settings.volStep || 0.05;
+                const delta = e.deltaY < 0 ? step : -step;
+                let newVol = v.volume + delta;
+                newVol = Math.max(0, Math.min(1, newVol));
+                v.volume = newVol;
+
+                showVolumeOSD(newVol);
+
+                // Обновляем визуальные полоски громкости в плеере Kodiak
+                const slider = volBar.querySelector('.fp-volumeslider');
+                if (slider) {
+                    const bars = Array.from(slider.querySelectorAll('em'));
+                    if (bars.length > 0) {
+                        const activeCount = Math.round(newVol * bars.length);
+                        bars.forEach((em, idx) => {
+                            em.className = idx < activeCount ? 'fp-color' : 'fp-grey';
+                        });
+                    }
+                }
+            }
+        }, { passive: false });
+
+        // Показ OSD при обычном клике пользователя по ползунку
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.fp-volume') && e.isTrusted) {
+                // Даем плееру небольшую задержку, чтобы он успел обновить v.volume системно
+                setTimeout(() => { showVolumeOSD(v.volume); }, 50);
+            }
+        });
     }
 
     // Оптимизация: используем MutationObserver вместо setInterval
