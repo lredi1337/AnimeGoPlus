@@ -21,6 +21,9 @@
 
         const centerBtns = document.querySelectorAll('.ag-center-btn');
         centerBtns.forEach(el => el.style.display = settings.showCenterBtn ? 'flex' : 'none');
+
+        const pipBtn = document.getElementById('ag-pip');
+        if (pipBtn) pipBtn.style.display = (settings.showPiP !== false) ? 'flex' : 'none';
     }
 
     document.addEventListener('keydown', (e) => {
@@ -297,6 +300,7 @@
             #ag-skip { left:0; top:calc(50% + 150px); transform:translateY(-50%); width:80px; height:140px; font-size:45px; transition: 0.4s; }
             body[data-ag-fs-state="true"] #ag-skip { top: auto; bottom: 80px; transform: translateY(0); }
             .ag-center-btn { position:relative; width:60px; height:60px; font-size:18px; border-radius:50%; margin:0 40px; }
+            #ag-pip { top:25px; right:25px; width:48px; height:48px; }
             #ag-flash { position:absolute; top:30%; left:50%; transform:translateX(-50%); color:white; font-size:32px; font-weight:bold; opacity:0; text-shadow:0 0 10px #000; z-index:10000; }
             .ag-click-zone { position:absolute; top:0; height:75%; pointer-events:auto; z-index:9999980; }
             #ag-fs-patch { position:absolute; bottom:0; right:0; width:60px; height:60px; pointer-events:auto; z-index:9999999; cursor:pointer; }
@@ -308,7 +312,7 @@
         document.head.appendChild(style);
         const ui = document.createElement('div'); ui.id = 'ag-ui';
         const parser = new DOMParser();
-        const doc = parser.parseFromString(`<div class="ag-btn ag-nav" style="left:0" id="ag-p"><span>&lt;</span><div id="ag-pn" class="ag-num"></div></div><div class="ag-btn ag-nav" style="right:0" id="ag-n"><span>&gt;</span><div id="ag-nn" class="ag-num"></div></div><div class="ag-btn" id="ag-skip"><span>»</span></div><div class="ag-btn ag-center-btn" id="ag-c1">«5</div><div class="ag-btn ag-center-btn" id="ag-c2">5»</div><div id="ag-flash"></div><div class="ag-click-zone" style="left:0; width:20%;" id="z-p"></div><div class="ag-click-zone" style="right:0; width:20%;" id="z-n"></div><div class="ag-click-zone" style="left:20%; width:60%;" id="z-m"></div><div id="ag-fs-patch"></div><div id="ag-tooltip">AnimeGO+: Расширить плеер</div>`, 'text/html');
+        const doc = parser.parseFromString(`<div class="ag-btn ag-nav" style="left:0" id="ag-p"><span>&lt;</span><div id="ag-pn" class="ag-num"></div></div><div class="ag-btn ag-nav" style="right:0" id="ag-n"><span>&gt;</span><div id="ag-nn" class="ag-num"></div></div><div class="ag-btn" id="ag-skip"><span>»</span></div><div class="ag-btn ag-center-btn" id="ag-c1">«5</div><div class="ag-btn ag-center-btn" id="ag-c2">5»</div><div class="ag-btn" id="ag-pip" title="PiP (Картинка в картинке)"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg></div><div id="ag-flash"></div><div class="ag-click-zone" style="left:0; width:20%;" id="z-p"></div><div class="ag-click-zone" style="right:0; width:20%;" id="z-n"></div><div class="ag-click-zone" style="left:20%; width:60%;" id="z-m"></div><div id="ag-fs-patch"></div><div id="ag-tooltip">AnimeGO+: Расширить плеер</div>`, 'text/html');
         ui.replaceChildren(...doc.body.childNodes);
         document.body.appendChild(ui);
 
@@ -320,6 +324,12 @@
         document.getElementById('ag-skip').onclick = () => v.currentTime += 90;
         document.getElementById('ag-c1').onclick = () => doRewind(-5, v);
         document.getElementById('ag-c2').onclick = () => doRewind(5, v);
+        document.getElementById('ag-pip').onclick = async () => {
+            try {
+                if (document.pictureInPictureElement) await document.exitPictureInPicture();
+                else await v.requestPictureInPicture();
+            } catch (err) { console.error("PiP error:", err); }
+        };
         document.getElementById('z-p').onclick = (e) => handleZone(e, 'prev', v);
         document.getElementById('z-n').onclick = (e) => handleZone(e, 'next', v);
         document.getElementById('z-m').onclick = (e) => handleZone(e, 'mid', v);
@@ -344,13 +354,36 @@
             if (!window.isValidOrigin(e.origin)) return;
             if (e.data?.type === 'AG_DATA') {
                 const getN = (s) => s ? s.match(/\d+/)?.[0] : "";
-                if (document.getElementById('ag-pn')) document.getElementById('ag-pn').textContent = getN(e.data.prevTitle);
-                if (document.getElementById('ag-nn')) document.getElementById('ag-nn').textContent = getN(e.data.nextTitle);
+                const prevNum = getN(e.data.prevTitle);
+                const nextNum = getN(e.data.nextTitle);
+
+                if (document.getElementById('ag-pn')) document.getElementById('ag-pn').textContent = prevNum;
+                if (document.getElementById('ag-nn')) document.getElementById('ag-nn').textContent = nextNum;
+
+                if ('mediaSession' in navigator && navigator.mediaSession.metadata) {
+                    navigator.mediaSession.metadata.title = e.data.currentTitle || 'AnimeGO+';
+                }
             }
         });
 
-        // Запрос данных заголовков при запуске (интервал удален для оптимизации)
         window.parent.postMessage({ type: 'AG_GET_DATA' }, '*');
+
+        // MediaSession API для управления из PiP (кнопки "Следующий", "Предыдущий", перемотка)
+        if ('mediaSession' in navigator) {
+            try {
+                // Без метаданных браузеры (особенно Chrome) могут скрывать кнопки Next/Prev
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: 'AnimeGO+',
+                    artist: 'AnimeGO+',
+                    album: 'AnimeGO Series'
+                });
+
+                navigator.mediaSession.setActionHandler('seekforward', () => { v.currentTime += 5; });
+                navigator.mediaSession.setActionHandler('seekbackward', () => { v.currentTime -= 5; });
+                navigator.mediaSession.setActionHandler('previoustrack', () => window.parent.postMessage({ type: 'AG_NAV', dir: 'prev' }, '*'));
+                navigator.mediaSession.setActionHandler('nexttrack', () => window.parent.postMessage({ type: 'AG_NAV', dir: 'next' }, '*'));
+            } catch (e) { console.warn("MediaSession not fully supported."); }
+        }
     }
 
     // Оптимизация: используем MutationObserver вместо setInterval

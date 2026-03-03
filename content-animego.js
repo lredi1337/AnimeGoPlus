@@ -257,13 +257,14 @@
         if (e.data?.type === 'AG_PLAYER_READY' || e.data?.type === 'AG_GET_DATA') {
             if (checkMarathon()) e.source.postMessage({ type: 'AG_MARATHON_CONFIRM' }, '*');
             const sel = document.querySelector("select[name='series']");
-            let pT = "", nT = "";
+            let pT = "", nT = "", cT = document.title;
             if (sel) {
                 const i = sel.selectedIndex;
                 if (sel.options[i - 1]) pT = sel.options[i - 1].textContent;
+                if (sel.options[i]) cT = sel.options[i].textContent + " - " + document.title.split(' — ')[0];
                 if (sel.options[i + 1]) nT = sel.options[i + 1].textContent;
             }
-            e.source.postMessage({ type: 'AG_DATA', prevTitle: pT, nextTitle: nT }, '*');
+            e.source.postMessage({ type: 'AG_DATA', prevTitle: pT, nextTitle: nT, currentTitle: cT }, '*');
             syncAniSkip(e.source);
         }
         if (e.data?.type === 'AG_START_MARATHON') {
@@ -340,6 +341,7 @@
             <div class="ag-set-group">Интерфейс</div>
             ${renderRow('showNav', 'Стрелки серий', 'Кнопки < и > по бокам.')}
             ${renderRow('showSkipBtn', 'Кнопка +90с', 'Кнопка пропуска опенинга.')}
+             ${renderRow('showPiP', 'Кнопка PiP', 'Специальная кнопка Картинка-в-Картинке.')}
             ${renderRow('showCenterBtn', 'Кнопки перемотки', 'Дополнительные кнопки -5с / +5с в центре.')}
             ${renderRow('showDBL', 'Двойной клик', 'Перемотка по краям и фуллскрин в центре по 2-му клику.')}
             
@@ -371,7 +373,7 @@
                 hideTime: parseInt(document.getElementById('s-hideTime').value),
                 keys: settings.keys
             };
-            ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => newS[k] = document.getElementById(`s-${k}`).checked);
+            ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showPiP', 'showCenterBtn', 'showDBL'].forEach(k => newS[k] = document.getElementById(`s-${k}`).checked);
 
             chrome.storage.local.set({ ag_settings: newS });
             settings = newS;
@@ -382,7 +384,7 @@
             }
         };
 
-        ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => {
+        ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showPiP', 'showCenterBtn', 'showDBL'].forEach(k => {
             document.getElementById(`s-${k}`).addEventListener('change', saveSettings);
         });
 
@@ -425,7 +427,7 @@
 
         document.getElementById('ag-reset').onclick = () => {
             const resetSettings = { ...settings };
-            ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showCenterBtn', 'showDBL'].forEach(k => {
+            ['autoPlay', 'autoNext', 'autoFS', 'autoSkip', 'showNav', 'showSkipBtn', 'showPiP', 'showCenterBtn', 'showDBL'].forEach(k => {
                 resetSettings[k] = false;
                 const checkbox = document.getElementById(`s-${k}`);
                 if (checkbox) checkbox.checked = false;
