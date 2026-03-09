@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AnimeGO+",
-  "version": "5.0",
+  "version": "5.1",
   "description": "Улучшенный плеер с авто-пропуском опенингов и марафоном",
   "homepage_url": "https://lredi1337.github.io/AnimeGoPlus/",
   "permissions": [
